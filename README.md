@@ -18,3 +18,5 @@ The most minimalist WebSocket server can be started like this:
     }
     
     Websocket::start 1337 MessageHandler
+
+This starts a new server on port 1337, that passes messages to `MessageHandler` namespace's `on-message` proc.
