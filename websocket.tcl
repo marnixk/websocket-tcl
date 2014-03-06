@@ -111,6 +111,7 @@ namespace eval Websocket {
 
 		if { $input == "" } then {
 			puts ".. connection closed."
+			${handling_namespace}::on-close $chan
 			close $chan
 			return
 		}
@@ -156,7 +157,13 @@ namespace eval Websocket {
 			set key_idx [expr {($key_idx + 1) % 4}]
 		}
 
-		${handling_namespace}::on-message $chan $decoded
+		if { [catch { ${handling_namespace}::on-message $chan $decoded} error_msg error_trace ] } then {
+			puts "------------- captured error ----------------------------------------"
+			puts "Error occured: $error_msg"
+			puts $error_trace
+			puts "---------------------------------------------------------------------"
+
+		}
 	}
 
 	# 
@@ -199,6 +206,7 @@ namespace eval Websocket {
 	proc send-handshake {chan} {
 		variable state
 		variable guid
+		variable handling_namespace
 
 		# setup the handshake key
 		set concat_key "$state($chan,Sec-WebSocket-Key)$guid"
@@ -222,6 +230,9 @@ namespace eval Websocket {
 		fconfigure $chan -translation binary
 		fconfigure $chan -buffering none
 		set state($chan,connected) true
+
+		${handling_namespace}::on-connect $chan
+
 	}
 
 	proc to_byte {char {index 0}} {
@@ -246,6 +257,10 @@ namespace eval Websocket {
 		}
 	}
 
+	proc request_url {chan} {
+		variable state
+		return $state($chan,url)
+	}
 
 	#
 	#  Called when the message is translated.
