@@ -48,19 +48,19 @@ namespace eval Space::jsonrpc {
 		set input [json::json2dict $message]
 
 		if { ![dict exists $input action] } then {
-			error-message output "no action specified"
+			error-message output "No action specified"
 		} else {
 
 			set action [dict get $input action]
 			
 			if { ! [action-exists $action ] } then {
-				error-message output "this action does not exist" 
+				error-message output "This action does not exist" 
 			} else {
 				array set output [call-action $action $chan $input]
 			}
 		}
 
-
+		# encoded message to send.
 		return [json::encode [json::array output]]
 	}
 

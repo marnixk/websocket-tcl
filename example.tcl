@@ -7,7 +7,6 @@ source "messagedispatcher.tcl"
 source "json.tcl"
 source "jsonrpc-space.tcl"
 
-
 namespace eval Action::echo {
 
 	#

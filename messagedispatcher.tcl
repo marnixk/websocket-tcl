@@ -41,22 +41,20 @@ namespace eval Websocket::MessageDispatcher {
 	#
 	#   Forward incoming message to correct space and output the resulting information
 	#
-	proc on-message {channels message} {
+	proc on-message {chan message} {
 
-		foreach chan $channels {
+		set space [request_space $chan]
 
-			set space [request_space $chan]
+		# get output
+		set output [${space}::on-message $chan $message]
 
-			# get output
-			set output [${space}::on-message $chan $message]
+		# clean it up
+		set output [string trim $output]
 
-			# clean it up
-			set output [string trim $output]
-
-			if { $output != "" } then {
-				Websocket::send-message $chan $output
-			}
+		if { $output != "" } then {
+			Websocket::send-message $chan $output
 		}
+
 	}
 
 }

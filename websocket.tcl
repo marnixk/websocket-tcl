@@ -192,7 +192,7 @@ namespace eval Websocket {
 			set key_idx [expr {($key_idx + 1) % 4}]
 		}
 
-		if { [catch { ${handling_namespace}::on-message [list $chan] $decoded} error_msg error_trace ] } then {
+		if { [catch { ${handling_namespace}::on-message $chan $decoded} error_msg error_trace ] } then {
 			puts "------------- captured error ----------------------------------------"
 			puts "Error occured: $error_msg"
 			puts $error_trace
