@@ -83,7 +83,7 @@ namespace eval Websocket {
 		variable active_channels
 		variable handling_namespace
 
-		set src_request-url [request-url $src_chan]
+		set src_request_url [request-url $src_chan]
 
 		# get a list of all channels on same url 
 		foreach nominee $active_channels {
@@ -93,8 +93,8 @@ namespace eval Websocket {
 				continue
 			}
 
-			set dst_request-url [request-url $nominee]
-			if { $dst_request-url == $src_request-url } then {
+			set dst_request_url [request-url $nominee]
+			if { $dst_request_url == $src_request_url } then {
 				send-message $nominee $message
 			}
 		}

@@ -39,6 +39,11 @@ Similarly, when a connection is established or closed the following procedures a
     proc on-close {chan} {
     }
 
+To run a server with this dispatcher just call: 
+
+    Websocket::start 1337
+
+
 ## Default JSON-RPC implementation
 
 Another default dispatcher that is delivered through this package is the `jsonrpc` space that:
@@ -52,7 +57,6 @@ The proc has the following signature:
     }
 
 Where json is a TCL datastructure. A simple sample echo action that also notifies others about incoming messages is the following code:
-
 
     namespace eval Action::echo {
 
@@ -79,6 +83,35 @@ Where json is a TCL datastructure. A simple sample echo action that also notifie
             return [array get output]
         }
     }
+
+The jsonrpc implementation has a mechanism that allows you to hook namespaces into `on-connect` and `on-close` events. 
+
+    namespace eval Disconnect::notify-others {
+
+        jsonrpc'has-on-close-callback
+
+        proc on-close {chan} {      
+            set leave(msg) [j' "$chan left for greener pastures"]
+            Websocket::broadcast $chan [json::encode [json::array leave]]
+        }
+
+    }
+
+    namespace eval Startup::initial-data {
+
+        jsonrpc'has-on-connect-callback
+
+        #
+        #   This proc is called when a new connection is made
+        #
+        proc on-connect {chan} {
+            set welcome(msg) [j' "welcome to this wonderful application"]
+            Websocket::send-message $chan [json::encode [json::array welcome]]
+        }
+
+    }
+
+Like so.
 
 ## Encoding a json response
 

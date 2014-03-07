@@ -3,16 +3,27 @@
 #
 namespace eval Space::jsonrpc {
 
+	variable on_connect_callbacks [list]
+	variable on_close_callbacks [list]
+
 	#
 	#   When a new connection to this space is created, this method is called
 	#
 	proc on-connect {chan} {
+		variable on_connect_callbacks
+		foreach ns $on_connect_callbacks {
+			${ns}::on-connect $chan
+		}
 	}
 
 	#
 	#	When the user closes the connection for this space, handle it here.
 	#
 	proc on-close {chan} {
+		variable on_close_callbacks
+		foreach ns $on_close_callbacks {
+			${ns}::on-close $chan
+		}
 	}
 
 	proc error-message {r_output msg {code 100}} {
@@ -63,4 +74,15 @@ namespace eval Space::jsonrpc {
 		return [json::encode [json::array output]]
 	}
 
+}
+
+proc jsonrpc'has-on-connect-callback {} {
+	set calling_namespace [uplevel 1 namespace current]
+	lappend Space::jsonrpc::on_connect_callbacks $calling_namespace
+}
+
+
+proc jsonrpc'has-on-close-callback {} {
+	set calling_namespace [uplevel 1 namespace current]
+	lappend Space::jsonrpc::on_close_callbacks $calling_namespace
 }
