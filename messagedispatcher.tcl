@@ -13,7 +13,7 @@ namespace eval Websocket::MessageDispatcher {
 	#
 	proc request_space {chan} {
 
-		set url [Websocket::request_url $chan]
+		set url [Websocket::request-url $chan]
 		if { [string index $url 0] == "/" } then {
 			set url [string range $url 1 end]
 		}
@@ -41,18 +41,21 @@ namespace eval Websocket::MessageDispatcher {
 	#
 	#   Forward incoming message to correct space and output the resulting information
 	#
-	proc on-message {chan message} {
+	proc on-message {channels message} {
 
-		set space [request_space $chan]
+		foreach chan $channels {
 
-		# get output
-		set output [${space}::on-message $chan $message]
+			set space [request_space $chan]
 
-		# clean it up
-		set output [string trim $output]
+			# get output
+			set output [${space}::on-message $chan $message]
 
-		if { $output != "" } then {
-			Websocket::send-message $chan $output
+			# clean it up
+			set output [string trim $output]
+
+			if { $output != "" } then {
+				Websocket::send-message $chan $output
+			}
 		}
 	}
 

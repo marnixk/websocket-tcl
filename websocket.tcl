@@ -11,11 +11,12 @@ namespace eval Websocket {
 	variable guid "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 	variable debug 0
 	variable handling_namespace
+	variable active_channels
 
 	#
 	#  Start a socket server
 	#
-	proc start {port {my_handling_namespace Websocket}} {
+	proc start {port {my_handling_namespace Websocket::MessageDispatcher}} {
 		variable handling_namespace 
 
 		set handling_namespace $my_handling_namespace
@@ -29,6 +30,8 @@ namespace eval Websocket {
 	#
 	proc accept {chan addr port} {
 		variable state
+		variable active_channels
+
 		puts "$addr:$port started"
 
 		fconfigure $chan -buffering line
@@ -72,6 +75,32 @@ namespace eval Websocket {
 
 
 	#
+	#   Allow the broadcasting of `message` to channels that are in the same space as
+	#	`chan`. If exclude_self is set to '0', the message will also be sent to the 
+	# 	current channel.
+	#
+	proc broadcast {src_chan message {exclude_self 1}} {
+		variable active_channels
+		variable handling_namespace
+
+		set src_request-url [request-url $src_chan]
+
+		# get a list of all channels on same url 
+		foreach nominee $active_channels {
+
+			# found self and need to skip?
+			if { ${exclude_self} && $nominee == $src_chan } then {
+				continue
+			}
+
+			set dst_request-url [request-url $nominee]
+			if { $dst_request-url == $src_request-url } then {
+				send-message $nominee $message
+			}
+		}
+	}
+
+	#
 	#   Sending of messages using data framing as described here: 
 	#	http://stackoverflow.com/questions/8125507/how-can-i-send-and-receive-websocket-messages-on-the-server-side
 	#
@@ -105,12 +134,18 @@ namespace eval Websocket {
 	proc read-binary-socket {chan} {
 		variable state
 		variable handling_namespace
+		variable active_channels
 
 		# full binary data
 		set input [read $chan]
 
 		if { $input == "" } then {
 			puts ".. connection closed."
+
+			# remove chan from active channels list
+			set chan_idx [lsearch $active_channels $chan]
+			set active_channels [lreplace $active_channels $chan_idx $chan_idx]
+
 			${handling_namespace}::on-close $chan
 			close $chan
 			return
@@ -157,7 +192,7 @@ namespace eval Websocket {
 			set key_idx [expr {($key_idx + 1) % 4}]
 		}
 
-		if { [catch { ${handling_namespace}::on-message $chan $decoded} error_msg error_trace ] } then {
+		if { [catch { ${handling_namespace}::on-message [list $chan] $decoded} error_msg error_trace ] } then {
 			puts "------------- captured error ----------------------------------------"
 			puts "Error occured: $error_msg"
 			puts $error_trace
@@ -207,6 +242,7 @@ namespace eval Websocket {
 		variable state
 		variable guid
 		variable handling_namespace
+		variable active_channels
 
 		# setup the handshake key
 		set concat_key "$state($chan,Sec-WebSocket-Key)$guid"
@@ -231,10 +267,16 @@ namespace eval Websocket {
 		fconfigure $chan -buffering none
 		set state($chan,connected) true
 
+		# add chan value to active channels
+		lappend active_channels $chan
+
 		${handling_namespace}::on-connect $chan
 
 	}
 
+	#
+	#   Transform a character (or character at index in $char string) to a byte value
+	#
 	proc to_byte {char {index 0}} {
 		set byte [scan [string index $char $index] %c]
 		if {$byte == ""} then {
@@ -243,6 +285,9 @@ namespace eval Websocket {
 		return [expr $byte & 0xff]
 	}
 
+	#
+	#   Convert a byte value to its character representative
+	#
 	proc to_char {byte} {
 		return [format "%c" $byte]
 	}
@@ -257,16 +302,11 @@ namespace eval Websocket {
 		}
 	}
 
-	proc request_url {chan} {
+	#
+	#	Return the request url for a specific channel
+	#
+	proc request-url {chan} {
 		variable state
 		return $state($chan,url)
 	}
-
-	#
-	#  Called when the message is translated.
-	#
-	proc on-message {chan line} {
-		puts "Received: $line"
-	}
-
 }
