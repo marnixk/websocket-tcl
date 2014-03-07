@@ -6,6 +6,7 @@
 #
 #   A connection on: `/jsonrpc`, will end up calling `Space::jsonrpc::on-message`
 #
+
 namespace eval Websocket::MessageDispatcher {
 
 	#
