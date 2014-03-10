@@ -111,6 +111,10 @@ namespace eval json {
 	}
 
 	proc value {value} {
+		set value [string map {"\"" "\\\"" } $value ]
+		set value [string map {"\n" "\\n" } $value ]
+		set value [string map {"\t" "\\t" } $value ]
+		
 		return [::list val $value]
 	}
 
@@ -128,4 +132,30 @@ proc j' {value} {
 	} else {
 		return [json::value $value]
 	}
+}
+
+
+#
+#   Shallowly maps a list of items to their j' counterparts and returns it
+#
+proc j'list {values} {
+	lappend mapped_list
+	foreach val $values {
+		lappend mapped_list [j' $val]
+	}
+	return [json::list $mapped_list]
+}
+
+
+#
+#   Shallowly maps a list of items to their j' counterparts and returns it
+#
+proc j'array {r_array} {
+	upvar 1 $r_array arr
+
+	foreach {key val} [array get arr] {
+		set mapped_array($key) [j' $val]
+	}
+
+	return [json::array mapped_array]
 }

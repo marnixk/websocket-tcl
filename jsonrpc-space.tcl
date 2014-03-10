@@ -64,9 +64,14 @@ namespace eval Space::jsonrpc {
 			set action [dict get $input action]
 			
 			if { ! [action-exists $action ] } then {
-				error-message output "This action does not exist" 
+				error-message output "This action does not exist `$action`" 
 			} else {
 				array set output [call-action $action $chan $input]
+
+				# no return? just make it go away.
+				if { [array size output] == 0 } then {
+					return ""
+				}
 			}
 		}
 
@@ -85,4 +90,11 @@ proc jsonrpc'has-on-connect-callback {} {
 proc jsonrpc'has-on-close-callback {} {
 	set calling_namespace [uplevel 1 namespace current]
 	lappend Space::jsonrpc::on_close_callbacks $calling_namespace
+}
+
+proc jsonrpc'message {name content} {
+	set output(action) [j' $name]
+	array set content_out $content
+	set output(payload) [json::array content_out]
+	return [json::encode [json::array output]]
 }
