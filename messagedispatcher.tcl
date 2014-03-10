@@ -14,7 +14,7 @@ namespace eval Websocket::MessageDispatcher {
 	#
 	proc request_space {chan} {
 
-		set url [Websocket::request-url $chan]
+		set url [HttpServer::request-path $chan]
 		if { [string index $url 0] == "/" } then {
 			set url [string range $url 1 end]
 		}

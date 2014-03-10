@@ -53,7 +53,7 @@ namespace eval Space::jsonrpc {
 	#   When a message is received, handle it here. 
 	#
 	proc on-message {chan message} {
-
+		
 		# get tcl structure for json message
 		set input [json::json2dict $message]
 

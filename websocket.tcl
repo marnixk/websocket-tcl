@@ -3,6 +3,8 @@ package require base64
 
 namespace eval Websocket {
 
+	httpserver'path "/ws"
+
 	# -> channel
 	# 		-> url
 	#		-> headers
@@ -10,46 +12,15 @@ namespace eval Websocket {
 	variable state
 	variable guid "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 	variable debug 0
-	variable handling_namespace
+	variable handling_namespace Websocket::MessageDispatcher
 	variable active_channels
-
-	#
-	#  Start a socket server
-	#
-	proc start {port {my_handling_namespace Websocket::MessageDispatcher}} {
-		variable handling_namespace 
-
-		set handling_namespace $my_handling_namespace
-
-		socket -server accept $port 
-		vwait forever
-	}
-
-	#
-	#  Handler for accepting new connections
-	#
-	proc accept {chan addr port} {
-		variable state
-		variable active_channels
-
-		puts "$addr:$port started"
-
-		fconfigure $chan -buffering line
-		fconfigure $chan -blocking 0
-		fileevent $chan readable "Websocket::read-from-socket $chan"
-
-		set state($chan) read-url
-		set state($chan,connected) false
-	}
 
 	#
 	#   Generic socket reader, makes sure to dispatch resulting line to 
 	#   the active state handler
 	#
 	proc read-from-socket {chan} {
-		variable state
-
-		if { $state($chan,connected) != true } then {
+		if { $HttpServer::state($chan,connected) != true } then {
 			read-http-socket $chan
 		} else {
 			read-binary-socket $chan
@@ -60,7 +31,6 @@ namespace eval Websocket {
 	#   Read from the http socket and dispatch it to the current state's handler
 	#
 	proc read-http-socket {chan} {
-		variable state
 
 		set left [gets $chan line]
 		if { $left < 0 } {
@@ -69,7 +39,7 @@ namespace eval Websocket {
 				return
 			}
 		} else {
-			$state($chan) $chan $line
+			$HttpServer::state($chan) $chan $line
 		}
 	}
 
@@ -83,7 +53,7 @@ namespace eval Websocket {
 		variable active_channels
 		variable handling_namespace
 
-		set src_request_url [request-url $src_chan]
+		set src_request_url [HttpServer::request-path $src_chan]
 
 		# get a list of all channels on same url 
 		foreach nominee $active_channels {
@@ -93,7 +63,7 @@ namespace eval Websocket {
 				continue
 			}
 
-			set dst_request_url [request-url $nominee]
+			set dst_request_url [HttpServer::request-path $nominee]
 			if { $dst_request_url == $src_request_url } then {
 				send-message $nominee $message
 			}
@@ -132,7 +102,6 @@ namespace eval Websocket {
 	# 	http://stackoverflow.com/questions/8125507/how-can-i-send-and-receive-websocket-messages-on-the-server-side
 	#
 	proc read-binary-socket {chan} {
-		variable state
 		variable handling_namespace
 		variable active_channels
 
@@ -201,36 +170,22 @@ namespace eval Websocket {
 		}
 	}
 
-	# 
-	#	Read the URL 
-	#
-	proc read-url {chan line} {
-		variable state
-
-		set url [lindex $line 1]
-		puts ".. url - $url"
-
-		set state($chan,url) $url
-		set state($chan) read-headers
-	}
 
 	#
 	#	Read headers from the request
 	#
 	proc read-headers {chan line} {
-		variable state
-
 
 		set headername [string range [lindex $line 0] 0 end-1]
 		set value [string range $line [expr {2 + [string length $headername]}] end]
 		
 		log " .. $headername: $value"
 
-		set state($chan,$headername) $value
+		set HttpServer::state($chan,$headername) $value
 
 		if {$line == ""} then {
 			puts ".. done reading headers"
-			set state($chan) read-messages
+			set HttpServer::state($chan) read-messages
 			send-handshake $chan
 		}
 	}
@@ -239,17 +194,16 @@ namespace eval Websocket {
 	#	Calculate the handshake code based on the retrieved header key
 	#
 	proc send-handshake {chan} {
-		variable state
 		variable guid
 		variable handling_namespace
 		variable active_channels
 
 		# setup the handshake key
-		set concat_key "$state($chan,Sec-WebSocket-Key)$guid"
+		set concat_key "$HttpServer::state($chan,Sec-WebSocket-Key)$guid"
 		set sha_hash [sha1::sha1 -bin $concat_key]
 		set sha_base64 [base64::encode $sha_hash]
 
-		if { $state($chan,Sec-WebSocket-Version) != 13 } then {
+		if { $HttpServer::state($chan,Sec-WebSocket-Version) != 13 } then {
 			puts "Don't know how to handle requests lower than v13."
 			close $chan
 		}
@@ -265,7 +219,7 @@ namespace eval Websocket {
 
 		fconfigure $chan -translation binary
 		fconfigure $chan -buffering none
-		set state($chan,connected) true
+		set HttpServer::state($chan,connected) true
 
 		# add chan value to active channels
 		lappend active_channels $chan
@@ -300,13 +254,5 @@ namespace eval Websocket {
 		if {$debug != 0} then {
 			puts "debug: $text"
 		}
-	}
-
-	#
-	#	Return the request url for a specific channel
-	#
-	proc request-url {chan} {
-		variable state
-		return $state($chan,url)
 	}
 }
