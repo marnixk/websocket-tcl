@@ -83,15 +83,7 @@ namespace eval json {
 	#
 	proc handle_value {r_result type value} {
 		upvar 1 $r_result result
-
-		if {[string is integer $value]} then {
-			append result $value
-		} elseif {[string is boolean $value]} then {
-			append result $value
-		} else {
-			append result "\"$value\""
-		}
-
+		append result "\"$value\""
 	}
 
 	# ------------------------------------------------------------------
