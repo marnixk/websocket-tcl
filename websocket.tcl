@@ -35,7 +35,7 @@ namespace eval Websocket {
 		set left [gets $chan line]
 		if { $left < 0 } {
 			if { [eof $chan] } {
-				close $chan
+				HttpServer::close $chan
 				return
 			}
 		} else {
@@ -116,7 +116,7 @@ namespace eval Websocket {
 			set active_channels [lreplace $active_channels $chan_idx $chan_idx]
 
 			${handling_namespace}::on-close $chan
-			close $chan
+			HttpServer::close $chan
 			return
 		}
 
