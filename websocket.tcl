@@ -3,7 +3,7 @@ package require base64
 
 namespace eval Websocket {
 
-	httpserver'path "/ws"
+	httpserver'path "/ws" 
 
 	# -> channel
 	# 		-> url
