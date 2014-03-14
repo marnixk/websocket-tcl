@@ -64,6 +64,12 @@ namespace eval Messagebus {
 	#
 	proc notify {topic message} {
 		variable subscriptions
+
+		# noone is even listening to this topic? 
+		if {![dict exists $subscriptions $topic]} then {
+			return
+		}
+
 		set topic_members [dict get $subscriptions $topic]
 
 		foreach chan $topic_members {
