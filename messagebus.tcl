@@ -3,7 +3,6 @@
 #
 namespace eval Messagebus {
 
-
 	variable subscriptions
 
 	jsonrpc'has-on-connect-callback

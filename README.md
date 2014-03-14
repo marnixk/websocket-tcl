@@ -123,6 +123,48 @@ TCL being a type-less language without very straight-forward ways of detecting t
 
     puts [json::encode [json::array output]]
 
+## Messagebus
 
+There is a messagebus you can use to send messages to channels that are subscribed to certain topics. 
 
+To add a channel to a topic:
 
+    Messagebus::subscribe $chan "your topic"
+
+To unsubscribe:
+
+    Messagebus::unsubcribe $chan "your topic"
+
+To notify everyone in a topic with a certain message:
+
+    Messagebus::notify "your topic" ".. json message .."
+
+## Observables
+
+Oftentimes you will want to keep people up-to-date on changes in a datastructure. This could be accomplished by using the messagebus to notify a topic with a certain message when information changes. There is also the 'observable' mechanism that wraps the messagebus slightly. 
+
+To subscribe a channel to listen to updates to certain elements run:
+
+    Observable::subscribe $chan userlist 
+
+To unsubscribe:
+
+    Observable::unsubscribe $chan userlist
+
+Now, you can wrap operations on your datastructure with the `||` operator. It's supposed to be cool ASCII-art for a "data pipe". To listen to updates to our userlist do the following:
+
+    || {userlist->list} {
+        lappend userlist "another user"
+    }
+
+The `||` method checks the initial value, executes the body, checks the value after, if it has changed, it will push the userlist through a method in the Observable namespace called `convert-list`. This should return a valid json string that represents the datastructure. 
+
+Which is then wrapped in a message that is sent to the `obs.userlist` channel (your javascript should be listening on this). 
+
+The list conversion is the default, so shorthand for this would be:
+
+    || {userlist} { .. }
+
+If you have other structures that need to be changed, just add a proc to the `Observable` namespace with its only parameter being the value that is to be converted.
+
+If userlist doesn't change, nothing is sent.
