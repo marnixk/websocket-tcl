@@ -5,6 +5,7 @@ namespace eval Space::jsonrpc {
 
 	variable on_connect_callbacks [list]
 	variable on_close_callbacks [list]
+	variable on_message_callbacks [list]
 
 	#
 	#   When a new connection to this space is created, this method is called
@@ -53,7 +54,12 @@ namespace eval Space::jsonrpc {
 	#   When a message is received, handle it here. 
 	#
 	proc on-message {chan message} {
+		variable on_message_callbacks
 		
+		foreach ns $on_message_callbacks {
+			${ns}::on-message $chan $message
+		}
+
 		# get tcl structure for json message
 		set input [json::json2dict $message]
 
@@ -81,20 +87,53 @@ namespace eval Space::jsonrpc {
 
 }
 
+#
+#	This proc is used to register custom on-connect callback handlers, this will
+#	allow you to automatically subscribe channels to correct observational elements.
+#
 proc jsonrpc'has-on-connect-callback {} {
 	set calling_namespace [uplevel 1 namespace current]
 	lappend Space::jsonrpc::on_connect_callbacks $calling_namespace
 }
 
-
+#
+# 	This proc is used to register custom on-close callback handlers
+#
 proc jsonrpc'has-on-close-callback {} {
 	set calling_namespace [uplevel 1 namespace current]
 	lappend Space::jsonrpc::on_close_callbacks $calling_namespace
 }
 
+#
+#   This proc enables a namespace outside the normal Action::<eventname> namespaces
+#	to intercept each request and handle them accordingly.
+#
+proc jsonrpc'has-on-message-callback {} {
+	set calling_namespace [uplevel 1 namespace current]
+	lappend Space::jsonrpc::on_close_callbacks $calling_namespace
+}
+
+#
+#	Create a message for the action called `name` with an array structured
+#	list of elements in `content` put as the payload attribute
+#
 proc jsonrpc'message {name content} {
 	set output(action) [j' $name]
 	array set content_out $content
 	set output(payload) [json::array content_out]
 	return [json::encode [json::array output]]
+}
+
+#
+#
+#
+proc jsonrpc'respond-to {message} {
+	array set m_arr $message
+
+	if {[info exists m_arr(id)]} then {
+		set response(respond-to) [j' $m_arr(id)]
+		return [array get response]
+	}
+
+	return ""
 }
