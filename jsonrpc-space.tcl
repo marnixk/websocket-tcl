@@ -55,14 +55,18 @@ namespace eval Space::jsonrpc {
 	#
 	proc on-message {chan message} {
 		variable on_message_callbacks
-		
+
+		# do message interceptions, stops processing when "stop-processing" is returned.
 		foreach ns $on_message_callbacks {
-			${ns}::on-message $chan $message
+			set filter_result [${ns}::on-message $chan $message]
+			if {$filter_result == "stop-processing"} then {
+				return
+			}
 		}
 
 		# get tcl structure for json message
 		set input [json::json2dict $message]
-
+		
 		if { ![dict exists $input action] } then {
 			error-message output "No action specified"
 		} else {
@@ -110,7 +114,7 @@ proc jsonrpc'has-on-close-callback {} {
 #
 proc jsonrpc'has-on-message-callback {} {
 	set calling_namespace [uplevel 1 namespace current]
-	lappend Space::jsonrpc::on_close_callbacks $calling_namespace
+	lappend Space::jsonrpc::on_message_callbacks $calling_namespace
 }
 
 #
