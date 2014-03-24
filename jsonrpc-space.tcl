@@ -27,12 +27,12 @@ namespace eval Space::jsonrpc {
 		}
 	}
 
-	proc error-message {r_output msg {code 100}} {
-		upvar 1 $r_output output
-
-		set output(status) [ j' "error" ]
-		set output(code) [ j' $code ]
-		set output(error) [ j' $msg ]
+	proc error-message {msg {code 100}} {
+		return [create errormessage {
+				status "error"
+				code $code
+				error $msg
+			}]
 	}
 
 	#
@@ -67,26 +67,33 @@ namespace eval Space::jsonrpc {
 		# get tcl structure for json message
 		set input [json::json2dict $message]
 		
+		# cast to 'message' struct
+		set input [cast $input message]
+
 		if { ![dict exists $input action] } then {
-			error-message output "No action specified"
+			set output [error-message "No action specified"]
 		} else {
 
 			set action [dict get $input action]
 			
 			if { ! [action-exists $action ] } then {
-				error-message output "This action does not exist `$action`" 
+				set output [error-message "This action does not exist `$action`"]
 			} else {
-				array set output [call-action $action $chan $input]
+				set output [call-action $action $chan $input]
 
 				# no return? just make it go away.
-				if { [array size output] == 0 } then {
+				if { [llength $output] == 0 } then {
 					return ""
 				}
 			}
 		}
 
-		# encoded message to send.
-		return [json::encode [json::array output]]
+		# make sure this is a struct
+		if {[is-struct $output]} then {
+			return [json::encode-struct $output]
+		} 
+
+		return -error "should only be outputting `structs`"
 	}
 
 }
@@ -119,25 +126,30 @@ proc jsonrpc'has-on-message-callback {} {
 
 #
 #	Create a message for the action called `name` with an array structured
-#	list of elements in `content` put as the payload attribute
+#	list of elements in `payload` put as the payload attribute
 #
-proc jsonrpc'message {name content} {
-	set output(action) [j' $name]
-	array set content_out $content
-	set output(payload) [json::array content_out]
-	return [json::encode [json::array output]]
+proc jsonrpc'message {name payload} {
+	set msg [create message { action $name payload $payload }]
+	return [json::encode-struct $msg]
 }
 
 #
 #
 #
 proc jsonrpc'respond-to {message} {
-	array set m_arr $message
+	set original [message.id message]
 
-	if {[info exists m_arr(id)]} then {
-		set response(respond-to) [j' $m_arr(id)]
-		return [array get response]
-	}
+	# create response
+	set response [create message]
+	message.id reponse $original
+	return $response
 
-	return ""
+	# array set m_arr $message
+
+	# if {[info exists m_arr(id)]} then {
+	# 	set response(respond-to) [j' $m_arr(id)]
+	# 	return [array get response]
+	# }
+
+	# return ""
 }
